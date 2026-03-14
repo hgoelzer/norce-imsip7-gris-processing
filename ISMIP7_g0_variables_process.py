@@ -21,7 +21,7 @@ import datetime
 #path_to_experiment='/projects/NS8006K/users/heig/CISM/GrIS/gris_16km/e16_MAR39_classic_t0/e16_ens_MAR39_Rmed'
 #MODEL='CISM16-MAR39-p50'
 #inres='16'
-#outres='05' # match to target 2d output, typically higher than model res
+#outres='08' # match to target 2d output, typically higher than model res
 
 # Source setup instead
 exec(open('setup_params.py').read())
@@ -83,7 +83,7 @@ for tier in Tiers:
         ok = True
         print( 'Creating the ISMIP7 file for experiment', exp)
 
-        outputfoldervar = outputfolder + '/' + GROUP + '/' + MODEL + '/' + exp + '/'  
+        outputfoldervar = outputfolder + '/' + GROUP + '/' + MODEL + '/' + exp + '_' + inres
     
         # Create a subdirectory named for the output files.
         try:
@@ -154,7 +154,7 @@ for tier in Tiers:
                 print('creating output file for field ',field)
     
                 # Create the field output file.
-                outfilenamevar = outputfoldervar + field  + '_' + model + '_' + exp + '.nc'
+                outfilenamevar = outputfoldervar + '/' + field  + '_' + model + '_' + exp + '.nc'
         
                 # Removing the output file if it already exists.
                 if os.path.isfile(outfilenamevar):

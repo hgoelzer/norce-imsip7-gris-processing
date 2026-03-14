@@ -76,7 +76,7 @@ for tier in Tiers:
         expID = tier4_ID
 
     else:
-        sys.exit('This tier is not supported by ISMIP7 protocole.')
+        sys.exit('This tier is not supported by ISMIP7 protocol.')
         
         
     for exp in expID:
@@ -85,7 +85,7 @@ for tier in Tiers:
         # Defining the filed to access
         scalar_file = path_to_experiment + '/' + exp + '/' + fileScalar
         
-        outputfolderscal = outputfolder + '/' + GROUP + '/' + MODEL + '/' + exp + '/'  
+        outputfolderscal = outputfolder + '/' + GROUP + '/' + MODEL + '/' + exp + '_' + outres # write scalars directly to outres
     
         # Create a subdirectory named for the output files.
         try:
@@ -130,9 +130,9 @@ for tier in Tiers:
     
     
                 
-                        ##################
-                        # Scalar outputs #
-                        ##################
+            ##################
+            # Scalar outputs #
+            ##################
     
     
             # Varaiables to be written
@@ -145,7 +145,7 @@ for tier in Tiers:
                 print('creating output file for field ',field)
     
                 # Create the field output file.
-                outfilenamescal = outputfolderscal + field  + '_' + modeltag + '_' + exp + '.nc'
+                outfilenamescal = outputfolderscal + '/' + field  + '_' + modeltag + '_' + exp + '.nc'
         
                 # Removing the output file if it already exists.
                 if os.path.isfile(outfilenamescal):

@@ -38,8 +38,8 @@ Tiers = ['Tier1']
 IS    = 'GrIS'  # Ice Sheet name
 GROUP = 'NORCE'
 
-#outputfolder = './Models'
-outputfolder = './proc'
+outputfolder = './Models'
+#outputfolder = './proc' # if regridding is needed
 
 model = IS + '_' + GROUP + '_' + MODEL
 
@@ -90,7 +90,7 @@ for tier in Tiers:
         ok = True
         print( 'Creating the ISMIP6 file for experiment', exp)
 
-        outputfoldervar = outputfolder + '/' + GROUP + '/' + MODEL + '/' + exp + '/'  
+        outputfoldervar = outputfolder + '/' + GROUP + '/' + MODEL + '/' + exp + '_' + inres 
     
         # Create a subdirectory named for the output files.
         try:
@@ -203,7 +203,7 @@ for tier in Tiers:
                     print('creating output file for field ',field)
         
                     # Create the field output file.
-                    outfilenamevar = outputfoldervar + field  + '_' + model + '_' + exp + '.nc'
+                    outfilenamevar = outputfoldervar + '/' + field  + '_' + model + '_' + exp + '.nc'
             
                     # Removing the output file if it already exists.
                     if os.path.isfile(outfilenamevar):
