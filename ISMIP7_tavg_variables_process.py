@@ -186,7 +186,7 @@ for tier in Tiers:
                 # Corresponding CISM fields to assimilate to experiment output field naming
                 f_ground      = f_groundout[:,:,:] # grounded ice sheet area fraction
                 f_float       = f_floatout[:,:,:] # floating ice sheet area fraction
-                f_ice = f_ground + f_float # ice sheet area fraction
+                f_ice = f_ground[:,:,:] + f_float[:,:,:] # ice sheet area fraction
                 
                 basal_mbal_flux_gr = basal_mbal_fluxout[:,:,:]*f_ground[:,:,:]   # basal mass balance flux beneath grounded ice
                 basal_mbal_flux_fl = basal_mbal_fluxout[:,:,:]*f_float[:,:,:]    # basal mass balance flux beneath floating ice

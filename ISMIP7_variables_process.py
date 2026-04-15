@@ -48,11 +48,11 @@ fileField   = 'output.nc'
 
 
 # ISMIP7 Field names defined on the thickness grid
-#ST_list = ['lithk', 'orog', 'topg', 'litemptop', 'litempbotgr', 'litempbotfl', 'sftgif', 'sftgrf', 'sftflf'] 
-#FL_list = ['hfgeoubed']
+ST_list = ['lithk', 'base', 'orog', 'topg', 'litemptop', 'litempmean', 'litempbotgr', 'litempbotfl', 'sftgif', 'sftgrf', 'sftflf'] 
+FL_list = ['hfgeoubed']
 # Reduced set for scalar recomp
-ST_list = ['lithk', 'orog', 'topg', 'sftgif', 'sftgrf', 'sftflf'] 
-FL_list = []
+#ST_list = ['lithk', 'orog', 'topg', 'sftgif', 'sftgrf', 'sftflf'] 
+#FL_list = []
 
 fieldoutList = ST_list + FL_list
 
@@ -132,16 +132,17 @@ for tier in Tiers:
     
                 thkout             = cismfilefield.variables['thk'][:,:,:]                # ice thickness (m)
                 usurfout           = cismfilefield.variables['usurf'][:,:,:]              # upper surface elevation (m)
-                #lsurfout           = cismfilefield.variables['lsurf'][:,:,:]              # lower surface elevation (m)
+                lsurfout           = cismfilefield.variables['lsurf'][:,:,:]              # lower surface elevation (m)
                 topgout            = cismfilefield.variables['topg'][:,:,:]               # bed elevation (m)
-                #bheatflxout        = -cismfilefield.variables['bheatflx'][:,:,:]           # geothermal heat flux (m)
+                bheatflxout        = -cismfilefield.variables['bheatflx'][:,:,:]          # geothermal heat flux (m)
     
-                artmout            = cismfilefield.variables['artm'][:,:,:]                 # annual mean air temperature (deg C)
+                artmout            = cismfilefield.variables['artm'][:,:,:]               # annual mean air temperature (deg C)
                 #btempout           = cismfilefield.variables['btemp'][:,:,:]                # basal ice temperature (C)
                 #ice_maskout        = cismfilefield.variables['ice_mask'][:,:,:]             # land ice area fraction (1)
-                f_groundout        = cismfilefield.variables['grounded_mask'][:,:,:]       # grounded ice sheet area fraction (1)
+                f_groundout        = cismfilefield.variables['grounded_mask'][:,:,:]      # grounded ice sheet area fraction (1)
                 f_floatout        = cismfilefield.variables['floating_mask'][:,:,:]       # grounded ice sheet area fraction (1)
     
+                tempout           = cismfilefield.variables['tempstag'][:,:,:,:]           # ice temperature (C)
     
             except:
                 sys.exit('Error: The output file' + cismfilefield + ' is missing needed variable(s).')
@@ -152,9 +153,15 @@ for tier in Tiers:
             #f_float       = (1-f_groundout[:,:,:])*ice_maskout[:,:,:]  # floating ice sheet area fraction
             f_ground      = f_groundout[:,:,:] # grounded ice sheet area fraction
             f_float       = f_floatout[:,:,:] # floating ice sheet area fraction
-    
-            #btemp_gr          = btempout[:,:,:]*f_ground[:,:,:]  # basal temperature beneath grounded ice sheet
-            #btemp_fl          = btempout[:,:,:]*f_float[:,:,:]   # basal temperature beneath floating ice shelf
+            f_ice = f_ground[:,:,:] + f_float[:,:,:] # ice sheet area fraction
+
+            btempout          = tempout[:,1,:,:]
+            ttempout          = tempout[:,0,:,:]
+            mtempout          = np.mean(tempout[:,:,:,:], axis=1) # vertical average 
+            
+        
+            btemp_gr          = btempout[:,:,:]*f_ground[:,:,:]  # basal temperature beneath grounded ice sheet
+            btemp_fl          = btempout[:,:,:]*f_float[:,:,:]   # basal temperature beneath floating ice shelf
         
                 
             #############################
@@ -241,8 +248,16 @@ for tier in Tiers:
                         litemptop.units         = 'K'
                         litemptop.long_name     = 'surface temperature'
                         litemptop.standard_name = 'temperature_at_top_of_ice_sheet_model'
-                        litemptop[:,:,:] = artmout[:,:,:]+273.15      
+                        #litemptop[:,:,:] = artmout[:,:,:]+273.15      
+                        litemptop[:,:,:] = ttempout[:,:,:]+273.15      
     
+                    if field in ['litempmean']: 
+                        litemptop = ncid.createVariable(field, 'f4', ('time','y','x'))
+                        litemptop.units         = 'K'
+                        litemptop.long_name     = 'vertically averaged ice temperature'
+                        #litemptop.standard_name = 'mean_ice_sheet_temperature'
+                        litemptop[:,:,:] = mtempout[:,:,:]+273.15
+                        
                     if field in ['litempbotgr']: 
                         litempbotgr = ncid.createVariable(field, 'f4', ('time','y','x'))
                         litempbotgr.units         = 'K'
@@ -257,12 +272,12 @@ for tier in Tiers:
                         litempbotfl.standard_name = 'temperature_at_base_of_ice_sheet_model'
                         litempbotfl[:,:,:] = btemp_fl[:,:,:]+273.15     
     
-#                    if field in ['sftgif']:
-#                        sftgif = ncid.createVariable(field, 'f4', ('time','y','x'))
-#                        sftgif.units         = '1'
-#                        sftgif.long_name     = 'land ice area fraction'
-#                        sftgif.standard_name = 'land_ice_area_fraction'
-#                        sftgif[:,:,:] = ice_maskout[:,:,:]      
+                    if field in ['sftgif']:
+                        sftgif = ncid.createVariable(field, 'f4', ('time','y','x'))
+                        sftgif.units         = '1'
+                        sftgif.long_name     = 'land ice area fraction'
+                        sftgif.standard_name = 'land_ice_area_fraction'
+                        sftgif[:,:,:] = f_ice[:,:,:]      
     
                     if field in ['sftgrf']:
                         sftgrf = ncid.createVariable(field, 'f4', ('time','y','x'))
