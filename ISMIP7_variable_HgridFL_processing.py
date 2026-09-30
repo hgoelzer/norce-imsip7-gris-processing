@@ -154,13 +154,13 @@ fileVar = f"{run_dir}/output.nc"
 fileVarVel = f"{run_dir}/output.nc"
 
 
-fieldFL = ['acabf', 'libmassbfgr', 'dlithkdt',
+fieldFL = ['acabf', 'libmassbfgr', 'libmassbffl', 'dlithkdt',
            'licalvf', 'ligroundf', 'lifmassbf']
 # GrIS source variables:
 #   acabf        <- output.nc        acab            (m/yr ice, packed)
 #   libmassbfgr  <- output_tavg.nc   basal_mbal_flux_tavg * f_ground (kg/m2/s)
-#   NOTE: libmassbffl (basal mass balance beneath floating ice) is NOT written
-#   for GrIS — there is no floating ice, so the variable is not relevant.
+#   libmassbffl  <- ZEROS (required variable, but the GrIS has no floating
+#                  ice: floating_mask is all zero)
 #   dlithkdt     <- output.nc        dthck_dt        (m/yr after auto-scale)
 #   licalvf      <- output_tavg.nc   calving_flux_tavg               (kg/m2/s)
 #   ligroundf    <- output_tavg.nc   gl_flux_tavg                    (kg/m/s)
@@ -168,13 +168,13 @@ fieldFL = ['acabf', 'libmassbfgr', 'dlithkdt',
 
 
 # List of variable that needs to be read from previous experiment
-readListPrevExptString = ['ligroundf', 'licalvf', 'dlithkdt', 'libmassbfgr', 'acabf']
+readListPrevExptString = ['ligroundf', 'licalvf', 'dlithkdt', 'libmassbfgr', 'libmassbffl', 'acabf']
 
 fieldReady = ['acabf', 'dlithkdt', 'licalvf', 'ligroundf', 'lifmassbf']
 nameCISM = ['acab', 'dthck_dt', 'calving_flux_tavg', 'gl_flux_tavg', 'melt_rate_tavg']
 
-fieldException = ['libmassbfgr']
-nameCISM = ['basal_mbal_flux_tavg*f_ground']
+fieldException = ['libmassbfgr', 'libmassbffl']
+nameCISM = ['basal_mbal_flux_tavg*f_ground', 'zeros (no floating ice)']
 
 
 # ----------------------------------------------------------------------
@@ -362,6 +362,15 @@ for field in fieldFL:
         libmassbfgr[:, :, :] = np.where(f_ground[:, :, :] > 0,
                                         basal_flux_dst[:, :, :]*f_ground[:, :, :],
                                         netCDF4.default_fillvals['f4'])
+
+    if field in ['libmassbffl']:
+        libmassbffl = ncid.createVariable(field, 'f4', ('time', 'y', 'x'), fill_value=netCDF4.default_fillvals['f4'])
+        libmassbffl.units         = 'kg m-2 s-1'
+        libmassbffl.long_name     = 'basal mass balance flux beneath floating ice'
+        libmassbffl.standard_name = 'land_ice_basal_specific_mass_balance_flux'
+        # Required variable, but the GrIS has no floating ice
+        # (floating_mask is all zero) -> all zeros.
+        libmassbffl[:, :, :] = 0.0
 
     if field in ['dlithkdt']:
         dlithkdt = ncid.createVariable(field, 'f4', ('time', 'y', 'x'), fill_value=netCDF4.default_fillvals['f4'])
