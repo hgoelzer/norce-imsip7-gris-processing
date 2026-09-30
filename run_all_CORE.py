@@ -30,9 +30,9 @@ import subprocess
 import sys
 from datetime import datetime
 
-# Top-level configuration (paths, interpreter)
+# Top-level configuration (paths)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import PYTHON, PATH_EXP
+from config import PATH_EXP
 
 # ----------------------------------------------------------------------
 # Configuration
@@ -62,7 +62,9 @@ RUNS = [
     ('ocx',        None,  'r01'),
 ]
 
-# Python interpreter used to run the processing scripts: see PYTHON in config.py
+# Python interpreter used to run the processing scripts: the same one that
+# runs this wrapper (sys.executable), so activate a conda env with netCDF4,
+# numpy and scipy before calling `python run_all_CORE.py` (see README.md).
 
 path_exp = PATH_EXP
 
@@ -121,7 +123,7 @@ def main():
 
         status = 'OK'
         for script in SCRIPTS:
-            cmd = [PYTHON, os.path.join(SCRIPT_DIR, script),
+            cmd = [sys.executable, os.path.join(SCRIPT_DIR, script),
                    '--exp', exp, '--ESM_num', ESM_num or 'm01', '--RCM_num', RCM_num]
             if args.dryrun:
                 print('    [dryrun]', ' '.join(cmd))

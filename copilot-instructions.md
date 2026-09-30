@@ -20,9 +20,12 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
 
 ## Environments & commands
 
-- Processing python: `/nird/datapeak/NS11016K/miniforge3_26/envs/nc/bin/python` (netCDF4, numpy, scipy)
-- Compliance checker: isschecker 0.5.1 in env `/nird/datapeak/NS11016K/miniforge3_26/envs/isschecker` (python 3.14)
-- Run everything: `/nird/datapeak/NS11016K/miniforge3_26/envs/nc/bin/python run_all_CORE.py --exp <exp>` (exp = input dir name, e.g. `ctrl-proj`)
+- Processing python: any conda env with netCDF4, numpy and scipy (see README.md
+  "Environment setup" for how to create one); activate it, then call plain
+  `python`. The wrapper (`run_all_CORE.py`) launches the processing scripts
+  with `sys.executable`, i.e. the same interpreter that runs the wrapper.
+- Compliance checker: isschecker 0.5.1 in env `/nird/datapeak/NS11016K/miniforge3_26/envs/isschecker` (python 3.14) — separate env, user-managed.
+- Run everything: `python run_all_CORE.py --exp <exp>` (exp = input dir name, e.g. `ctrl-proj`)
 - Long batch runs: execute in background and check the summary table at the end.
 
 ## Input data

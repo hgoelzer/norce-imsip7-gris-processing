@@ -8,15 +8,13 @@ ISMIP7_variable_VelogridST_processing.py) and the wrapper (run_all_CORE.py)
 import their defaults from this file. Edit the values here to change them
 for all scripts at once; individual scripts can still override them on the
 command line (--path_exp, --dstPath).
+
+The scripts require a python environment with netCDF4, numpy and scipy
+installed (see README.md for how to create one); run them with that
+environment's `python`.
 """
 
 import os
-
-# ----------------------------------------------------------------------
-# Python interpreter used by the wrapper to run the processing scripts
-# (must have netCDF4, numpy and scipy installed)
-# ----------------------------------------------------------------------
-PYTHON = '/nird/datapeak/NS11016K/miniforge3_26/envs/nc/bin/python'
 
 # ----------------------------------------------------------------------
 # Path to the CISM model output (proj run directory, READONLY)
@@ -27,7 +25,7 @@ PATH_EXP = '/nird/datapeak/NS5011K/users/mali/CISM/GrIS/cism_storage/ismip7_gris
 # ----------------------------------------------------------------------
 # Base path for the ISMIP7 output data
 # ----------------------------------------------------------------------
-DST_PATH = '/nird/datalake/NS11016K/users/heig/ISMIP7/data_processing'
+DST_PATH = '/nird/datapeak/NS5011K/users/heig/ISMIP7'
 
 # ----------------------------------------------------------------------
 # ISM model ID used in the output directory tree and file names

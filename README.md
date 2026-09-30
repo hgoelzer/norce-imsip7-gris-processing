@@ -7,6 +7,20 @@ NetCDF output (11 CORE experiments), validated with the ISM_SimulationChecker
 This repo is the Greenland (GrIS) counterpart of `norce-ismip7-ais-processing/`
 and follows the same structure, naming conventions and directory layout.
 
+## Environment setup
+
+The processing scripts need a python environment with **netCDF4**, **numpy**
+and **scipy** (no matplotlib). Any conda installation works, e.g.:
+
+```bash
+conda create -n ismip7 -c conda-forge python=3.11 netcdf4 numpy scipy
+conda activate ismip7
+```
+
+All commands below assume this environment is activated, so that plain
+`python` resolves to it. The compliance checker (`isschecker`) uses its own
+separate environment and is not affected.
+
 ## Model / input
 
 - Model: CISM 2.0.5 (old driver), 4 km grid, `ism_id = CISM4`
@@ -63,16 +77,16 @@ and follows the same structure, naming conventions and directory layout.
 
 ```bash
 # all 11 runs
-/nird/datapeak/NS11016K/miniforge3_26/envs/nc/bin/python run_all_CORE.py
+python run_all_CORE.py
 
 # one experiment (both members)
-/nird/datapeak/NS11016K/miniforge3_26/envs/nc/bin/python run_all_CORE.py --exp historical
+python run_all_CORE.py --exp historical
 
 # dry run
-/nird/datapeak/NS11016K/miniforge3_26/envs/nc/bin/python run_all_CORE.py --dryrun
+python run_all_CORE.py --dryrun
 
 # offline consistency verification
-/nird/datapeak/NS11016K/miniforge3_26/envs/nc/bin/python verify_base_topg.py
+python verify_base_topg.py
 ```
 
 ## GrIS-specific differences from the AIS processing
