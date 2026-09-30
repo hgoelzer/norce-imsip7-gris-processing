@@ -10,13 +10,13 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
 - 4 processing scripts (module-level, no `main()`; argparse with defaults imported from `config.py`):
   - `ISMIP7_scalar_processing.py` — scalar time series (10 variables) from `scalars.nc`
   - `ISMIP7_variable_HgridST_processing.py` — state variables on x1/y1 grid (lithk, orog, base, topg, sftgif/sftgrf/sftflf)
-  - `ISMIP7_variable_HgridFL_processing.py` — flux variables on x1/y1 grid (acabf, libmassbfgr, libmassbffl, dlithkdt, licalvf, lifmassbf, ligroundf; libmassbffl is all zeros — required variable, no floating ice in GrIS)
+  - `ISMIP7_variable_HgridFL_processing.py` — flux variables on x1/y1 grid (acabf, libmassbfgr, libmassbffl, dlithkdt, licalvf, lifmassbf, ligroundf; libmassbffl is all fill — required variable, no floating ice in GrIS: 0 where floating_mask>0, `_FillValue` elsewhere)
   - `ISMIP7_variable_VelogridST_processing.py` — velocity variables interpolated from x0/y0 to x1/y1 (xvelmean, yvelmean, strbasemag)
 - `run_all_CORE.py` — wrapper over all 4 scripts for all 11 runs (`--exp`, `--dryrun` flags)
-- `config.py` — central config (paths, interpreter, `ISM_ID`). **Edit this, not the scripts**, to change paths.
+- `config.py` — central config (paths and metadata: `DOMAIN_ID`, `SOURCE_ID`, `SET_ID`, `ISM_ID`, `CONTACT_NAME`, `CONTACT_EMAIL`). **Edit this, not the scripts**, to change paths or metadata. No interpreter constant — the wrapper uses `sys.executable`.
 - `CORE.csv` — experiment table: counter_id, experiment_id (lowercase: `ctrl`), start/end year, ESM_id
 - `verify_base_topg.py` — offline replication of the isschecker base/topg/orog consistency tests
-- Output: `../GrIS/NORCE/CISM4/CORE/{C001..C011}/` — 27 files per case; `ism_id` comes from `ISM_ID` in `config.py` (CLI override: `--ism_id`)
+- Output: `../GrIS/NORCE/{ISM_ID}/CORE/{C001..C011}/` — 27 files per case; `ism_id` comes from `ISM_ID` in `config.py` (currently `CISM`; CLI override: `--ism_id`). Global attributes: `group`=source_id, `model`=ism_id, `contact_name`/`contact_email` from config.
 
 ## Environments & commands
 
@@ -25,7 +25,7 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
   `python`. The wrapper (`run_all_CORE.py`) launches the processing scripts
   with `sys.executable`, i.e. the same interpreter that runs the wrapper.
 - Compliance checker: isschecker 0.5.1 in env `/nird/datapeak/NS11016K/miniforge3_26/envs/isschecker` (python 3.14) — separate env, user-managed.
-- Run everything: `python run_all_CORE.py --exp <exp>` (exp = data-request experiment name, e.g. `ctrl`)
+- Run everything: `python run_all_CORE.py --exp <exp>` (exp = data-request experiment name, e.g. `ctrl`, or counter id `C001`..`C011`, case-insensitive; several allowed: `--exp C003 C004`)
 - Long batch runs: execute in background and check the summary table at the end.
 
 ## Input data
@@ -43,7 +43,7 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
 1. **Masks come from `output_mask.nc`, never from `output.nc`** — the GrIS output.nc has no `ice_mask`/`f_ground_cell`. It has `f_flotation`, which is the flotation FUNCTION (can be very negative), NOT a fraction — never use it as a mask.
 2. **No floating ice in GrIS** — `floating_mask` is all zero (marine_margin=1). `libmassbffl` is a REQUIRED variable → write 0 where floating ice exists and `_FillValue` elsewhere (checker: defined only where there is floating ice; GrIS field is all fill); sftflf/iareafl/tendlibmassbffl are zero/fill.
 3. **Packed data**: output.nc variables carry `scale_factor` (thk/topg/lsurf/usurf ×2000, acab ×5, dthck_dt ×1/31536000; output_g0 uvel/vvel ×500, btract ×17854200). netCDF4 auto-applies scaling on read (default) → values arrive in real units. NEVER call `set_auto_scale(False)` for these.
-4. **Masking per data request**: variables defined only where ice exists (libmassbfgr, xvelmean, yvelmean, strbasemag) → `np.where(mask>0, val, netCDF4.default_fillvals['f4'])`. But **dlithkdt, lifmassbf and libmassbffl permit NO missing values** → write 0 where there is no ice (libmassbffl is all zeros anyway).
+4. **Masking per data request**: variables defined only where ice exists (libmassbfgr, xvelmean, yvelmean, strbasemag) → `np.where(mask>0, val, netCDF4.default_fillvals['f4'])`. **dlithkdt, lifmassbf permit NO missing values** → write 0 where there is no ice. libmassbffl is the exception: fill outside floating ice (rule 2).
 5. **Experiment names are data-request names**: `--exp` / output filenames use `ctrl` (lowercase, per checker) and `ocx`; the input directories `ctrl-proj_{m}_{r}` and `OCX` are resolved via `run_dir_map` only. There is no separate `exp_out` variable.
 6. **Time conventions**: ST variables → Jan 1 of year+1; FL variables → Jul 1 of year; `time_range` tag derived from data (`time_dst[t]-1`). CISM year t covers nominal year t−1.
 7. **CF bounds naming**: the time bounds variable MUST be named `time_bnds` (matching `time:bounds = "time_bnds"`), not `time_bounds`.
@@ -57,6 +57,7 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
    - tendligroundf ← `total_gl_flux` (kg/s); tendlifmassbf ← zeros (no total_latmelt_flux); tendlibmassbfgr ← total_bmb_flux (all basal melt grounded); tendlibmassbffl ← zeros
 9. **base/topg cosmetic fix** (in `ISMIP7_variable_HgridST_processing.py`, applied before writing base/orog): where sftgrf==1 and |lsurf−topg|>0.009 → base=topg; where sftflf==1 and lsurf−topg<=0.011 → base=topg+0.1 m; same delta added to orog (keeps orog = base + lithk). The floating case never triggers for GrIS but is kept for consistency. Mask test uses MASK_TOL=1e-6, not ==1.0.
 10. **netCDF4 auto-masking pitfall**: `v == fv` never matches on auto-masked reads. To verify fill placement use `nid.set_auto_mask(False)` + `np.isclose(v, fv, rtol=1e-5)`.
+11. **Metadata is config-driven**: `domain_id`/`source_id`/`set_id`/`ism_id` and contacts come from `config.py` (`DOMAIN_ID`, `SOURCE_ID`, `SET_ID`, `ISM_ID`, `CONTACT_NAME`, `CONTACT_EMAIL`); attribute blocks write `ncid.group = source_id`, `ncid.model = ism_id`, `contact_name`, `contact_email`. Never hardcode these in a script (a stale `ncid.model = 'CISM3'` bug is why).
 
 ## Compliance checker notes
 
