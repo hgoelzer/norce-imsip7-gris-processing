@@ -10,7 +10,7 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
 - 4 processing scripts (module-level, no `main()`; argparse with defaults imported from `config.py`):
   - `ISMIP7_scalar_processing.py` — scalar time series (10 variables) from `scalars.nc`
   - `ISMIP7_variable_HgridST_processing.py` — state variables on x1/y1 grid (lithk, orog, base, topg, sftgif/sftgrf/sftflf)
-  - `ISMIP7_variable_HgridFL_processing.py` — flux variables on x1/y1 grid (acabf, libmassbfgr, libmassbffl, dlithkdt, licalvf, lifmassbf, ligroundf)
+  - `ISMIP7_variable_HgridFL_processing.py` — flux variables on x1/y1 grid (acabf, libmassbfgr, dlithkdt, licalvf, lifmassbf, ligroundf; libmassbffl is NOT written — not relevant for GrIS)
   - `ISMIP7_variable_VelogridST_processing.py` — velocity variables interpolated from x0/y0 to x1/y1 (xvelmean, yvelmean, strbasemag)
 - `run_all_CORE.py` — wrapper over all 4 scripts for all 11 runs (`--exp`, `--dryrun` flags)
 - `config.py` — central config (paths, interpreter, `ISM_ID`). **Edit this, not the scripts**, to change paths.
@@ -38,9 +38,9 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
 ## Critical domain rules (do not violate)
 
 1. **Masks come from `output_mask.nc`, never from `output.nc`** — the GrIS output.nc has no `ice_mask`/`f_ground_cell`. It has `f_flotation`, which is the flotation FUNCTION (can be very negative), NOT a fraction — never use it as a mask.
-2. **No floating ice in GrIS** — `floating_mask` is all zero (marine_margin=1). sftflf/libmassbffl/iareafl/tendlibmassbffl are therefore zero/fill; keep writing them (the data request expects them).
+2. **No floating ice in GrIS** — `floating_mask` is all zero (marine_margin=1). `libmassbffl` is NOT written (not relevant for GrIS); sftflf/iareafl/tendlibmassbffl are zero/fill.
 3. **Packed data**: output.nc variables carry `scale_factor` (thk/topg/lsurf/usurf ×2000, acab ×5, dthck_dt ×1/31536000; output_g0 uvel/vvel ×500, btract ×17854200). netCDF4 auto-applies scaling on read (default) → values arrive in real units. NEVER call `set_auto_scale(False)` for these.
-4. **Masking per data request**: variables defined only where ice exists (libmassbfgr, libmassbffl, xvelmean, yvelmean, strbasemag) → `np.where(mask>0, val, netCDF4.default_fillvals['f4'])`. But **dlithkdt and lifmassbf permit NO missing values** → write 0 where there is no ice.
+4. **Masking per data request**: variables defined only where ice exists (libmassbfgr, xvelmean, yvelmean, strbasemag) → `np.where(mask>0, val, netCDF4.default_fillvals['f4'])`. But **dlithkdt and lifmassbf permit NO missing values** → write 0 where there is no ice.
 5. **`exp_out` mapping**: checker requires lowercase `ctrl`; input dir is `ctrl-proj` → `exp_out = 'ctrl' if exp == 'ctrl-proj' else exp` in all 4 scripts (filenames use `exp_out`). OCX → `ocx`.
 6. **Time conventions**: ST variables → Jan 1 of year+1; FL variables → Jul 1 of year; `time_range` tag derived from data (`time_dst[t]-1`). CISM year t covers nominal year t−1.
 7. **CF bounds naming**: the time bounds variable MUST be named `time_bnds` (matching `time:bounds = "time_bnds"`), not `time_bounds`.

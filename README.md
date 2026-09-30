@@ -46,7 +46,8 @@ and follows the same structure, naming conventions and directory layout.
   - `ISMIP7_variable_HgridST_processing.py` — state variables on x1/y1 grid
     (lithk, orog, base, topg, sftgif/sftgrf/sftflf)
   - `ISMIP7_variable_HgridFL_processing.py` — flux variables on x1/y1 grid
-    (acabf, libmassbfgr, libmassbffl, dlithkdt, licalvf, lifmassbf, ligroundf)
+    (acabf, libmassbfgr, dlithkdt, licalvf, lifmassbf, ligroundf; no
+    libmassbffl — not relevant for GrIS, which has no floating ice)
   - `ISMIP7_variable_VelogridST_processing.py` — velocity variables interpolated
     from x0/y0 to x1/y1 (xvelmean, yvelmean, strbasemag)
 - `run_all_CORE.py` — wrapper over all 4 scripts for all 11 runs (`--exp`, `--dryrun`)
@@ -82,8 +83,8 @@ and follows the same structure, naming conventions and directory layout.
    time-dependent (time, y1, x1) masks: `ice_mask`, `grounded_mask`,
    `floating_mask`, `calving_front_mask`, `melt_front_mask`.
 2. **No floating ice** — `floating_mask` is all zero (marine_margin=1 removes
-   floating ice), so `sftflf`/`libmassbffl`/`iareafl`/`tendlibmassbffl` are
-   zero/fill.
+   floating ice), so `libmassbffl` is **not written at all** (not relevant for
+   GrIS); `sftflf`/`iareafl`/`tendlibmassbffl` are zero/fill.
 3. **Packed variables** — output.nc variables carry `scale_factor` (thk/topg/
    lsurf/usurf ×2000, acab ×5, dthck_dt ×1/31536000); netCDF4 applies the
    scaling automatically on read. Never use `set_auto_scale(False)`.
