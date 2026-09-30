@@ -26,7 +26,8 @@ import argparse
 
 # Top-level configuration (paths, interpreter)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import PATH_EXP, DST_PATH, ISM_ID
+from config import (PATH_EXP, DST_PATH, ISM_ID, CONTACT_NAME, CONTACT_EMAIL,
+                    DOMAIN_ID, SOURCE_ID, SET_ID)
 import netCDF4
 from pathlib import Path
 
@@ -46,10 +47,10 @@ def days_since_1850(year, month, day):
 # ----------------------------------------------------------------------
 # Strings for file naming convention:
 # ----------------------------------------------------------------------
-domain_id = 'GrIS'  # Ice Sheet name
-source_id = 'NORCE'
+domain_id = DOMAIN_ID  # from config
+source_id = SOURCE_ID  # from config
 ism_id = ISM_ID  # from config; can be overridden with --ism_id
-set_id = 'CORE'
+set_id = SET_ID  # from config
 
 dayPerY = 365.
 sPerY = 31536000.
@@ -61,7 +62,7 @@ fill_value = netCDF4.default_fillvals['f4']
 # Command line arguments (defaults reproduce the previous hard-coded run)
 # ----------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='ISMIP7 GrIS flux variables processing (Hgrid FL)')
-parser.add_argument('--exp',       default='ssp585', help='Experiment name (e.g. historical, ssp126, ssp370, ssp585, ctrl-proj, ocx)')
+parser.add_argument('--exp',       default='ssp585', help='Experiment name (e.g. historical, ssp126, ssp370, ssp585, ctrl, ocx)')
 parser.add_argument('--ESM_num',   default='m01',    help='ESM ensemble member (m01, m02); ocx run uses r01 only')
 parser.add_argument('--RCM_num',   default='r01',    help='RCM/ISM configuration number')
 parser.add_argument('--path_exp',  default=PATH_EXP,
@@ -79,9 +80,8 @@ path_exp = args.path_exp
 dstPath  = args.dstPath
 ism_id   = args.ism_id
 
-# Output experiment name: the data request (and compliance checker) uses
-# 'ctrl' for the control run, while the input directory is named ctrl-proj.
-exp_out = 'ctrl' if exp == 'ctrl-proj' else exp
+# exp is the data-request experiment name used in the output file names
+# ('ctrl', not the input directory name 'ctrl-proj'; see run_dir_map).
 
 # ----------------------------------------------------------------------
 # Derive ESM_id / ISM_member_id from the ESM ensemble member
@@ -110,7 +110,7 @@ exp_map = {
     'ssp370':     'C003',
     'ssp126':     'C005',
     'ssp585':     'C007',
-    'ctrl-proj':  'C009',
+    'ctrl':       'C009',
     'ocx':        'C011',
 }
 if exp in exp_map:
@@ -134,7 +134,7 @@ else:
 #   ssp370     -> greenland_04km_v01_{m}_{r}_f70
 #   ssp126     -> greenland_04km_v01_{m}_{r}_f26
 #   ssp585     -> greenland_04km_v01_{m}_{r}_f85
-#   ctrl-proj  -> ctrl-proj_{m}_{r}
+#   ctrl       -> ctrl-proj_{m}_{r}
 #   ocx        -> OCX (uppercase, no _{ESM_num}_{RCM_num} suffix)
 # ----------------------------------------------------------------------
 run_dir_map = {
@@ -142,7 +142,7 @@ run_dir_map = {
     'ssp370':     f"{path_exp}/greenland_04km_v01_{ESM_num}_{RCM_num}_f70",
     'ssp126':     f"{path_exp}/greenland_04km_v01_{ESM_num}_{RCM_num}_f26",
     'ssp585':     f"{path_exp}/greenland_04km_v01_{ESM_num}_{RCM_num}_f85",
-    'ctrl-proj':  f"{path_exp}/ctrl-proj_{ESM_num}_{RCM_num}",
+    'ctrl':       f"{path_exp}/ctrl-proj_{ESM_num}_{RCM_num}",
     'ocx':        f"{path_exp}/OCX",
 }
 if exp in run_dir_map:
@@ -159,8 +159,9 @@ fieldFL = ['acabf', 'libmassbfgr', 'libmassbffl', 'dlithkdt',
 # GrIS source variables:
 #   acabf        <- output.nc        acab            (m/yr ice, packed)
 #   libmassbfgr  <- output_tavg.nc   basal_mbal_flux_tavg * f_ground (kg/m2/s)
-#   libmassbffl  <- ZEROS (required variable, but the GrIS has no floating
-#                  ice: floating_mask is all zero)
+#   libmassbffl  <- ZEROS where floating ice, fill elsewhere (required
+#                  variable; the GrIS has no floating ice: floating_mask is
+#                  all zero, so the field is all fill)
 #   dlithkdt     <- output.nc        dthck_dt        (m/yr after auto-scale)
 #   licalvf      <- output_tavg.nc   calving_flux_tavg               (kg/m2/s)
 #   ligroundf    <- output_tavg.nc   gl_flux_tavg                    (kg/m/s)
@@ -226,6 +227,7 @@ except Exception:
 
 ice_mask = nidmask['ice_mask'][:, :, :]
 grounded_mask = nidmask['grounded_mask'][:, :, :]
+floating_mask = nidmask['floating_mask'][:, :, :]
 
 nidmask.close()
 
@@ -304,7 +306,7 @@ print(time_dst)
 for field in fieldFL:
 
     # Create the field output file.
-    dstFile = f"{dstDir}{field}_{domain_id}_{source_id}_{ism_id}_{ISM_member_id}_{ESM_id}_{forcing_member_id}_{exp_out}_{set_counter}_{time_range}.nc"
+    dstFile = f"{dstDir}{field}_{domain_id}_{source_id}_{ism_id}_{ISM_member_id}_{ESM_id}_{forcing_member_id}_{exp}_{set_counter}_{time_range}.nc"
 
     # Removing the output file if it already exists.
     if os.path.isfile(dstFile):
@@ -369,8 +371,12 @@ for field in fieldFL:
         libmassbffl.long_name     = 'basal mass balance flux beneath floating ice'
         libmassbffl.standard_name = 'land_ice_basal_specific_mass_balance_flux'
         # Required variable, but the GrIS has no floating ice
-        # (floating_mask is all zero) -> all zeros.
-        libmassbffl[:, :, :] = 0.0
+        # (floating_mask is all zero). The data request defines it only where
+        # there is floating ice -> cells without floating ice hold the fill
+        # value (checker requirement), so the GrIS field is all fill.
+        libmassbffl[:, :, :] = np.where(floating_mask[:, :, :] > 0,
+                                        0.0,
+                                        netCDF4.default_fillvals['f4'])
 
     if field in ['dlithkdt']:
         dlithkdt = ncid.createVariable(field, 'f4', ('time', 'y', 'x'), fill_value=netCDF4.default_fillvals['f4'])
@@ -413,9 +419,9 @@ for field in fieldFL:
         # per-metre value is written as-is (flagged for the checker).
         ligroundf[:, :, :] = np.ma.filled(gl_flux_dst[:, :, :], 0.0)
 
-    ncid.group = 'NORCE'
-    ncid.model = 'CISM3'
-    ncid.contact_name = 'Heiko Goelzer'
-    ncid.contact_email = 'heig@norceresearch.no'
+    ncid.group = source_id
+    ncid.model = ism_id
+    ncid.contact_name = CONTACT_NAME
+    ncid.contact_email = CONTACT_EMAIL
     ncid.crs = 'epsg:3413'
     ncid.close()

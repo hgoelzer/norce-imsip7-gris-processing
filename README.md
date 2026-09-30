@@ -38,6 +38,10 @@ separate environment and is not affected.
 
 ## CORE experiment mapping
 
+Experiment names (`--exp`) are the data-request names used in the output
+file names; the input run directories are resolved via `run_dir_map`
+(e.g. `ctrl` → `ctrl-proj_m01_r01`, `ssp126` → `greenland_04km_v01_..._f26`).
+
 | counter | experiment | input dir | years |
 |---------|-----------|-----------|-------|
 | C001 | historical | historical_m01_r01 | 1950–2014 |
@@ -67,8 +71,8 @@ separate environment and is not affected.
 - `run_all_CORE.py` — wrapper over all 4 scripts for all 11 runs (`--exp`, `--dryrun`)
 - `config.py` — central config (paths, interpreter, `ISM_ID`). **Edit this, not
   the scripts**, to change paths.
-- `CORE.csv` — experiment table: counter_id, experiment_id (lowercase: `ctrl`,
-  not `ctrl-proj`), start/end year, ESM_id
+- `CORE.csv` — experiment table: counter_id, experiment_id (lowercase:
+  `ctrl`), start/end year, ESM_id
 - `verify_base_topg.py` — offline replication of the isschecker base/topg/orog
   consistency tests
 - Output: `../GrIS/NORCE/CISM4/CORE/{C001..C011}/` — 27 files per case
@@ -81,6 +85,11 @@ python run_all_CORE.py
 
 # one experiment (both members)
 python run_all_CORE.py --exp historical
+python run_all_CORE.py --exp ctrl
+
+# one CORE case by counter id (C001..C011), or several
+python run_all_CORE.py --exp C003
+python run_all_CORE.py --exp C003 C004
 
 # dry run
 python run_all_CORE.py --dryrun
@@ -97,8 +106,10 @@ python verify_base_topg.py
    time-dependent (time, y1, x1) masks: `ice_mask`, `grounded_mask`,
    `floating_mask`, `calving_front_mask`, `melt_front_mask`.
 2. **No floating ice** — `floating_mask` is all zero (marine_margin=1 removes
-   floating ice), so `libmassbffl` is written as **all zeros** (required
-   variable); `sftflf`/`iareafl`/`tendlibmassbffl` are zero/fill.
+   floating ice), so `libmassbffl` is written as 0 where floating ice exists
+   and `_FillValue` elsewhere (required variable; the checker requires it
+   defined only where there is floating ice, so the GrIS field is all fill);
+   `sftflf`/`iareafl`/`tendlibmassbffl` are zero/fill.
 3. **Packed variables** — output.nc variables carry `scale_factor` (thk/topg/
    lsurf/usurf ×2000, acab ×5, dthck_dt ×1/31536000); netCDF4 applies the
    scaling automatically on read. Never use `set_auto_scale(False)`.

@@ -14,7 +14,7 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
   - `ISMIP7_variable_VelogridST_processing.py` — velocity variables interpolated from x0/y0 to x1/y1 (xvelmean, yvelmean, strbasemag)
 - `run_all_CORE.py` — wrapper over all 4 scripts for all 11 runs (`--exp`, `--dryrun` flags)
 - `config.py` — central config (paths, interpreter, `ISM_ID`). **Edit this, not the scripts**, to change paths.
-- `CORE.csv` — experiment table: counter_id, experiment_id (lowercase: `ctrl`, not `ctrl-proj`), start/end year, ESM_id
+- `CORE.csv` — experiment table: counter_id, experiment_id (lowercase: `ctrl`), start/end year, ESM_id
 - `verify_base_topg.py` — offline replication of the isschecker base/topg/orog consistency tests
 - Output: `../GrIS/NORCE/CISM4/CORE/{C001..C011}/` — 27 files per case; `ism_id` comes from `ISM_ID` in `config.py` (CLI override: `--ism_id`)
 
@@ -25,7 +25,7 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
   `python`. The wrapper (`run_all_CORE.py`) launches the processing scripts
   with `sys.executable`, i.e. the same interpreter that runs the wrapper.
 - Compliance checker: isschecker 0.5.1 in env `/nird/datapeak/NS11016K/miniforge3_26/envs/isschecker` (python 3.14) — separate env, user-managed.
-- Run everything: `python run_all_CORE.py --exp <exp>` (exp = input dir name, e.g. `ctrl-proj`)
+- Run everything: `python run_all_CORE.py --exp <exp>` (exp = data-request experiment name, e.g. `ctrl`)
 - Long batch runs: execute in background and check the summary table at the end.
 
 ## Input data
@@ -35,16 +35,16 @@ ISM_SimulationChecker (`isschecker`). This repo mirrors
 - 11 runs: historical_{m01_r01,m02_r02}, greenland_04km_v01_{m01_r01,m02_r02}_{f26,f70,f85}, ctrl-proj_{m01_r01,m02_r02}, OCX
   - f26 = ssp126, f70 = ssp370 (to 2100), f85 = ssp585; f34 (ssp534-over) exists but is NOT in CORE
 - ESM mapping: m01=CESM2-WACCM, m02=MRI-ESM2-0; ocx has no ESM → ESM_id='ERA', ISM_member_id='m001'
-- Experiment → counter: historical→C001/C002 (1950-2014), ssp370→C003/C004 (2015-2100), ssp126→C005/C006 (2015-2300), ssp585→C007/C008 (2015-2300), ctrl-proj→C009/C010 (2015-2300), ocx→C011 (1960-2025). m02 gets base counter +1 (`C%03d`).
+- Experiment → counter: historical→C001/C002 (1950-2014), ssp370→C003/C004 (2015-2100), ssp126→C005/C006 (2015-2300), ssp585→C007/C008 (2015-2300), ctrl→C009/C010 (2015-2300), ocx→C011 (1960-2025). m02 gets base counter +1 (`C%03d`).
 - HgridFL filePrev logic: historical → ctrl-proj restart_in.nc; ocx → OCX restart_in.nc (no historical predecessor); else → historical output.nc
 
 ## Critical domain rules (do not violate)
 
 1. **Masks come from `output_mask.nc`, never from `output.nc`** — the GrIS output.nc has no `ice_mask`/`f_ground_cell`. It has `f_flotation`, which is the flotation FUNCTION (can be very negative), NOT a fraction — never use it as a mask.
-2. **No floating ice in GrIS** — `floating_mask` is all zero (marine_margin=1). `libmassbffl` is a REQUIRED variable → write it as all zeros; sftflf/iareafl/tendlibmassbffl are zero/fill.
+2. **No floating ice in GrIS** — `floating_mask` is all zero (marine_margin=1). `libmassbffl` is a REQUIRED variable → write 0 where floating ice exists and `_FillValue` elsewhere (checker: defined only where there is floating ice; GrIS field is all fill); sftflf/iareafl/tendlibmassbffl are zero/fill.
 3. **Packed data**: output.nc variables carry `scale_factor` (thk/topg/lsurf/usurf ×2000, acab ×5, dthck_dt ×1/31536000; output_g0 uvel/vvel ×500, btract ×17854200). netCDF4 auto-applies scaling on read (default) → values arrive in real units. NEVER call `set_auto_scale(False)` for these.
 4. **Masking per data request**: variables defined only where ice exists (libmassbfgr, xvelmean, yvelmean, strbasemag) → `np.where(mask>0, val, netCDF4.default_fillvals['f4'])`. But **dlithkdt, lifmassbf and libmassbffl permit NO missing values** → write 0 where there is no ice (libmassbffl is all zeros anyway).
-5. **`exp_out` mapping**: checker requires lowercase `ctrl`; input dir is `ctrl-proj` → `exp_out = 'ctrl' if exp == 'ctrl-proj' else exp` in all 4 scripts (filenames use `exp_out`). OCX → `ocx`.
+5. **Experiment names are data-request names**: `--exp` / output filenames use `ctrl` (lowercase, per checker) and `ocx`; the input directories `ctrl-proj_{m}_{r}` and `OCX` are resolved via `run_dir_map` only. There is no separate `exp_out` variable.
 6. **Time conventions**: ST variables → Jan 1 of year+1; FL variables → Jul 1 of year; `time_range` tag derived from data (`time_dst[t]-1`). CISM year t covers nominal year t−1.
 7. **CF bounds naming**: the time bounds variable MUST be named `time_bnds` (matching `time:bounds = "time_bnds"`), not `time_bounds`.
 8. **Unit conversions**:

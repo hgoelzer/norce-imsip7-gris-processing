@@ -12,8 +12,8 @@ Experiments (set_counter):
     ssp126     m02 -> C006   (2015-2300)
     ssp585     m01 -> C007   (2015-2300)
     ssp585     m02 -> C008   (2015-2300)
-    ctrl-proj  m01 -> C009   (2015-2300)
-    ctrl-proj  m02 -> C010   (2015-2300)
+    ctrl       m01 -> C009   (2015-2300)
+    ctrl       m02 -> C010   (2015-2300)
     ocx        r01 -> C011   (1960-2025)
 The time_range tag in the output filenames is derived from the actual time
 axis of the model output, so it adjusts automatically when a run is
@@ -21,6 +21,8 @@ extended.
 Usage:
     python run_all_CORE.py                 # run everything
     python run_all_CORE.py --exp ssp126    # run only one experiment (all members)
+    python run_all_CORE.py --exp C003      # run one CORE case by counter id
+    python run_all_CORE.py --exp C003 C004 # run several cases
     python run_all_CORE.py --dryrun        # only print what would be run
 """
 
@@ -57,8 +59,8 @@ RUNS = [
     ('ssp126',     'm02', 'r02'),
     ('ssp585',     'm01', 'r01'),
     ('ssp585',     'm02', 'r02'),
-    ('ctrl-proj',  'm01', 'r01'),
-    ('ctrl-proj',  'm02', 'r02'),
+    ('ctrl',       'm01', 'r01'),
+    ('ctrl',       'm02', 'r02'),
     ('ocx',        None,  'r01'),
 ]
 
@@ -75,7 +77,7 @@ def run_dir(exp, ESM_num, RCM_num):
         return f"{path_exp}/OCX"
     if exp == 'historical':
         return f"{path_exp}/historical_{ESM_num}_{RCM_num}"
-    if exp == 'ctrl-proj':
+    if exp == 'ctrl':
         return f"{path_exp}/ctrl-proj_{ESM_num}_{RCM_num}"
     if exp == 'ssp370':
         return f"{path_exp}/greenland_04km_v01_{ESM_num}_{RCM_num}_f70"
@@ -86,19 +88,42 @@ def run_dir(exp, ESM_num, RCM_num):
     sys.exit(f'Error: unknown experiment {exp}')
 
 
+def runs_for_exp(exp):
+    """Return the RUNS entries matching an experiment name or a counter id.
+
+    Accepts an experiment name (historical, ssp370, ssp126, ssp585,
+    ctrl, ocx) or a CORE counter id (C001..C011, case-insensitive).
+    The RUNS order matches the CORE.csv counters (C001 = first entry).
+    """
+    key = exp.lower()
+    if key.startswith('c') and key[1:].isdigit():
+        idx = int(key[1:]) - 1
+        if 0 <= idx < len(RUNS):
+            return [RUNS[idx]]
+        sys.exit(f'Error: unknown counter {exp} (valid: C001..C011)')
+    runs = [r for r in RUNS if r[0] == exp]
+    if not runs:
+        sys.exit(f'Error: unknown experiment {exp} '
+                 '(valid: historical, ssp370, ssp126, ssp585, ctrl, ocx, '
+                 'or C001..C011)')
+    return runs
+
+
 def main():
     parser = argparse.ArgumentParser(description='Run ISMIP7 NORCE GrIS processing for all CORE experiments')
-    parser.add_argument('--exp', default=None,
-                        help='Only run this experiment (e.g. ssp126). Default: all 11 runs')
+    parser.add_argument('--exp', nargs='+', default=None, metavar='EXP',
+                        help='Only run these experiments: experiment names '
+                             '(historical, ssp370, ssp126, ssp585, ctrl, ocx) '
+                             'and/or counter ids (C001..C011). Default: all 11 runs')
     parser.add_argument('--dryrun', action='store_true',
                         help='Only print what would be run, without executing')
     args = parser.parse_args()
 
     runs = RUNS
     if args.exp is not None:
-        runs = [r for r in RUNS if r[0] == args.exp]
-        if not runs:
-            sys.exit(f'Error: unknown experiment {args.exp}')
+        runs = []
+        for exp in args.exp:
+            runs.extend(runs_for_exp(exp))
 
     results = []
 
